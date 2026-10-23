@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Конструктор процедур</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ====== ЦВЕТА (можно поменять под бренд) ====== */
+:root{
+  --bg:#f7f3ef; --card:#ffffff; --text:#2b2422; --muted:#8a7e78;
+  --line:#ebe3dc; --accent:#8c5a4f; --accent-soft:#f2e6e1; --accent-text:#ffffff;
+  --ok:#5b8a6b;
+}
+:root[data-theme="dark"]{
+  --bg:#1b1716; --card:#262120; --text:#f3ece7; --muted:#a3958e;
+  --line:#3a3230; --accent:#c48b7c; --accent-soft:#3a2c28; --accent-text:#1b1716;
+  --ok:#86b896;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.4}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 190px}
+h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:32px;line-height:1.1;margin:4px 0 6px}
+.sub{color:var(--muted);margin:0 0 16px}
+.tiers{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.tiers::-webkit-scrollbar{display:none}
+.tier{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:999px;
+  padding:7px 12px;font-size:13px;color:var(--muted);transition:.2s}
+.tier b{color:var(--text);font-weight:600}
+.tier.on{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.tier.on b{color:var(--accent-text)}
+section{margin-top:22px}
+h2{font-family:"Cormorant Garamond",Georgia,serif;font-size:23px;font-weight:600;margin:0 0 2px}
+.note{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:14px;border-top:1px solid var(--line);cursor:pointer;user-select:none}
+.item:first-child{border-top:0}
+.item.sel{background:var(--accent-soft)}
+.box{flex:0 0 22px;height:22px;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;transition:.15s}
+.item.sel .box{background:var(--accent);border-color:var(--accent)}
+.box svg{opacity:0;width:14px;height:14px;stroke:var(--accent-text)}
+.item.sel .box svg{opacity:1}
+.name{flex:1}
+.probs{display:grid;gap:10px}
+.prob{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.var+.var{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px}
+.vl{font-size:13.5px;font-weight:600;margin:0 0 4px}
+.prob h4{margin:0 0 4px;font-size:15.5px;font-weight:600}
+.prob .pl{color:var(--muted);font-size:13px;margin:0 0 10px}
+.prob .pr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.prob .pp{font-weight:600}
+.prob .pp s{color:var(--muted);font-weight:400;font-size:13px;margin-right:6px}
+.prob button{border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:11px;padding:8px 12px;font:600 13.5px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.subname{color:var(--muted);font-size:12.5px;margin-top:2px}
+.qty{display:flex;align-items:center;gap:10px;margin-top:8px}
+.item:not(.sel) .qty{display:none}
+.qty button{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--text);font:600 16px Inter,sans-serif;cursor:pointer}
+.qty span{font-size:13.5px;min-width:36px;text-align:center}
+.price{white-space:nowrap;font-weight:600}
+.disclaimer{color:var(--muted);font-size:12.5px;margin-top:24px;text-align:center}
+
+/* нижняя панель */
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.06)}
+.bar-in{max-width:560px;margin:0 auto}
+.hint{font-size:13px;color:var(--ok);min-height:18px;margin-bottom:6px}
+.row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.cnt{font-size:12.5px;color:var(--muted)}
+.old{text-decoration:line-through;color:var(--muted);font-size:13px;margin-right:6px}
+.total{font-size:24px;font-weight:600;letter-spacing:-.01em}
+.save{font-size:12.5px;color:var(--ok)}
+.btn{border:0;border-radius:14px;background:var(--accent);color:var(--accent-text);font:inherit;font-weight:600;
+  padding:14px 20px;font-size:15px;cursor:pointer}
+.btn:disabled{opacity:.4}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+
+/* окно заказа */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet h3{font-family:"Cormorant Garamond",Georgia,serif;font-size:24px;margin:0 0 6px}
+.sheet p{color:var(--muted);margin:0 0 12px;font-size:13.5px}
+textarea{width:100%;height:200px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);
+  font:13.5px/1.45 Inter,sans-serif;padding:12px;resize:none}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.toast{position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-80px);background:var(--text);color:var(--bg);
+  padding:10px 14px;border-radius:12px;font-size:13px;transition:.25s;z-index:20;max-width:90%;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Конструктор процедур</h1>
+  <p class="sub">Для постоянных клиентов. Отметь процедуры, и стоимость со скидкой посчитается сразу. За один приём — не более 6 процедур.</p>
+  <div class="tiers" id="tiers"></div>
+  <section>
+    <h2>Подбор по проблеме</h2>
+    <p class="note">Готовый набор можно выбрать и затем изменить</p>
+    <div class="probs" id="probs"></div>
+  </section>
+  <section>
+    <h2>Или соберите сами</h2>
+    <p class="note">Отдельные процедуры — отметьте нужные</p>
+  </section>
+  <div id="catalog"></div>
+  <p class="disclaimer">Стоимость предварительная. Окончательный план процедур и цена — после консультации. После подтверждения записи вы получите ссылку на оплату.</p>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="hint" id="hint"></div>
+    <div class="row">
+      <div>
+        <div class="cnt" id="cnt">Ничего не выбрано</div>
+        <div><span class="old" id="old"></span><span class="total" id="total">0 ₽</span></div>
+        <div class="save" id="save"></div>
+      </div>
+      <button class="btn" id="order" disabled>Оформить</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetBg">
+  <div class="sheet">
+    <h3>Ваш набор</h3>
+    <p id="sheetHelp"></p>
+    <textarea id="orderText" readonly></textarea>
+    <div class="actions">
+      <button class="btn" id="send">Скопировать и написать</button>
+      <button class="btn ghost" id="close">Вернуться к выбору</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====================== НАСТРОЙКИ ======================
+   Всё, что может понадобиться менять, — здесь.            */
+const CONFIG = {
+  telegram: "Ekaterinaastra_vrach",  // ник БЕЗ @
+  // Скидка по количеству выбранных позиций:
+  tiers: [
+    { min: 2, pct: 15 },
+    { min: 3, pct: 20 },
+    { min: 4, pct: 25 },
+    { min: 5, pct: 32 },
+    { min: 6, pct: 40 },
+  ],
+  cashPct: 0,
+  maxItems: 6,                // максимум процедур за один приём (нити тоже считаются)
+};
+
+/* Каталог. group — позиции из одной зоны: выбирается только одна,
+   при выборе другой первая снимается автоматически.            */
+const CATALOG = [
+  { title: "Ботокс: лицо и шея", note: "«Всё лицо» заменяет «верх» и «низ»", items: [
+    { id:"b1", name:"Верх (лоб, межбровье, глаза)", price:20000, groups:["bTop"] },
+    { id:"b2", name:"Низ (подбородок, овал, шея)", sub:"50 ед.", price:25000, groups:["bBot"] },
+    { id:"b3", name:"Всё лицо", sub:"50 ед.", price:30000, groups:["bTop","bBot"] },
+    { id:"b4", name:"Шея", sub:"25 ед.", price:15000 },
+  ]},
+  { title: "Ботокс: другие зоны", items: [
+    { id:"b6", name:"Жевательные мышцы", sub:"50 ед.", price:20000 },
+    { id:"b7", name:"Лечение мигрени", sub:"200 ед.", price:40000 },
+    { id:"b8", name:"Подмышки (гипергидроз)", sub:"150 ед.", price:25000 },
+  ]},
+  { title: "Биоревитализация: лицо", note: "Один препарат на лицо; веки — отдельно", items: [
+    { id:"r1", name:"С гиалуроновой кислотой", sub:"Novacutan, 2 мл", price:20000, groups:["rFace"] },
+    { id:"r8", name:"ПДРН 2% + гиалуроновая кислота", sub:"2 мл", price:15000, groups:["rFace"] },
+    { id:"r2", name:"С аминокислотами / пептидами", sub:"MesoWarton, MesoXantin, Аквашайн; 2 мл", price:25000, groups:["rFace"] },
+    { id:"r3", name:"С полимолочной кислотой", sub:"NP Systems, Favory, Bellarty; 5 мл", price:30000, groups:["rFace"] },
+    { id:"r7", name:"Веки", sub:"MesoXantin, 1 мл", price:15000 },
+  ]},
+  { title: "Биоревитализация: шея и декольте", note: "Один препарат на зону", items: [
+    { id:"r9", name:"Шея, с полимолочной кислотой", price:25000, groups:["rNeck"] },
+    { id:"r4", name:"Шея и декольте, с гиалуроновой кислотой", price:20000, groups:["rNeck"] },
+    { id:"r5", name:"Лицо и декольте, с пептидами", price:25000, groups:["rNeck","rFace"] },
+    { id:"r6", name:"Шея и декольте, с полимолочной кислотой", price:30000, groups:["rNeck"] },
+  ]},
+  { title: "Коллагеностимуляция", items: [
+    { id:"c1", name:"Полимолочная кислота: лицо", price:40000, groups:["cFace"] },
+    { id:"c4", name:"Полимолочная кислота: лицо и шея", price:50000, groups:["cFace"] },
+    { id:"c2", name:"Инус", sub:"всё лицо", price:50000 },
+    { id:"c3", name:"Radiesse", sub:"3 мл", price:50000 },
+  ]},
+  { title: "Контурная пластика", items: [
+    { id:"k1", name:"Губы", price:20000 },
+    { id:"k2", name:"Подбородок", price:20000 },
+    { id:"k3", name:"Скулы", price:30000 },
+    { id:"k4", name:"Овал (углы нижней челюсти)", price:40000 },
+    { id:"k5", name:"Кисти рук", price:30000 },
+    { id:"k6", name:"Филлер на основе ГК", price:15000, perMl:true },
+  ]},
+  { title: "Плазмолифтинг и скинбустеры", items: [
+    { id:"p1", name:"Плазмолифтинг, 1 пробирка", price:10000, groups:["plasma"] },
+    { id:"p2", name:"Плазмолифтинг, 2 пробирки", price:15000, groups:["plasma"] },
+    { id:"s1", name:"Скинбустер Profhilo", price:25000 },
+  ]},
+  { title: "Мезонити PDO «пружинка»", note: "Армирующие нити. Несколько зон за приём считаются одной процедурой", items: [
+    { id:"t1", name:"Терапевтический лифтинг", sub:"10 шт.", price:15000, countAs:"threads" },
+    { id:"t2", name:"Овал лица", sub:"20 шт.", price:25000, countAs:"threads" },
+    { id:"t3", name:"Скулы", sub:"20 шт.", price:25000, countAs:"threads" },
+    { id:"t4", name:"Второй подбородок", sub:"20 шт.", price:25000, countAs:"threads" },
+    { id:"t5", name:"Шея", sub:"20 шт.", price:25000, countAs:"threads" },
+    { id:"t6", name:"Веки", sub:"20 шт.", price:30000, countAs:"threads" },
+  ]},
+];
+
+/* Подборки по проблемам. ids — процедуры из каталога. */
+const PROBLEMS = [
+  { title:"Морщины на лбу", variants:[{ ids:["b1"] }] },
+  { title:"Усталый вид, морщины", variants:[
+    { label:"С пептидами и аминокислотами", ids:["b3","r2"] },
+    { label:"С полимолочной кислотой", ids:["b3","r3"] } ] },
+  { title:"Тяжи и морщины на шее", variants:[{ ids:["b2","b4","r9"] }] },
+  { title:"Отёчность лица, брыли", variants:[{ ids:["t2","r8"] }] },
+  { title:"Сухая, тонкая кожа", variants:[{ ids:["r1","c1"] }] },
+  { title:"Поры, снижение тонуса, тусклый цвет", variants:[{ ids:["c2","r2","p2"] }] },
+  { title:"Сухие морщинистые губы", variants:[{ ids:["k1"] }] },
+  { title:"Нечёткий овал лица", variants:[{ ids:["b2","k2","k4"] }] },
+  { title:"Резкое похудение, опущение овала, носогубные складки, брыли", variants:[{ ids:["c4","t2","t3","t4","t5","k6:2","b3"] }] },
+];
+
+/* ====================== ЛОГИКА ====================== */
+const tg = window.Telegram && window.Telegram.WebApp;
+try { if (tg) { tg.ready(); tg.expand(); document.documentElement.dataset.theme = tg.colorScheme || "light"; } } catch(e){}
+if (!tg || !tg.initData) {
+  if (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.dataset.theme = "dark";
+}
+
+const ITEMS = {}; CATALOG.forEach(c => c.items.forEach(i => { ITEMS[i.id] = { ...i, section:c.title }; }));
+const selected = new Set();
+const rub = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+const $ = id => document.getElementById(id);
+
+const qty = {};
+let payCash = false;
+const q = i => i.perMl ? (qty[i.id]||1) : 1;
+function priceLabel(i){ if(i.custom) return "индивид."; return (i.from?"от ":"")+rub(i.price)+(i.perMl?" / мл":""); }
+// Позиции для скидки и лимита: несколько зон мезонитей = одна процедура
+function positions(list){ return new Set(list.map(i=>i.countAs||i.id)).size; }
+function discountFor(n){ let p=0; CONFIG.tiers.forEach(t=>{ if(n>=t.min) p=t.pct; }); return p; }
+
+function renderCatalog(){
+  const check = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  $("catalog").innerHTML = CATALOG.map(c => `
+    <section>
+      <h2>${c.title}</h2>
+      ${c.note ? `<p class="note">${c.note}</p>` : '<p class="note"></p>'}
+      <div class="list">
+        ${c.items.map(i => `
+          <div class="item" data-id="${i.id}" role="checkbox" aria-checked="false" tabindex="0">
+            <div class="box">${check}</div>
+            <div class="name">${i.name}${i.sub?`<div class="subname">${i.sub}</div>`:""}${i.perMl?`<div class="qty"><button data-d="-1" aria-label="Меньше">−</button><span data-q="${i.id}">1 мл</span><button data-d="1" aria-label="Больше">+</button></div>`:""}</div>
+            <div class="price">${priceLabel(i)}</div>
+          </div>`).join("")}
+      </div>
+    </section>`).join("");
+  $("tiers").innerHTML = CONFIG.tiers.map(t => `<div class="tier" data-min="${t.min}">${t.min} поз. <b>−${t.pct}%</b></div>`).join("");
+}
+
+function toggle(id){
+  const it = ITEMS[id];
+  if (selected.has(id)) { selected.delete(id); }
+  else {
+    const conflicts = [...selected].filter(sid => (it.groups||[]).some(g => (ITEMS[sid].groups||[]).includes(g)));
+    const next = [...selected].filter(s=>!conflicts.includes(s)).concat(id).map(x=>ITEMS[x]).filter(i=>!i.custom);
+    if (positions(next) > CONFIG.maxItems) { toast(`За один приём — не более ${CONFIG.maxItems} процедур`); return; }
+    const removed = [];
+    (it.groups||[]).forEach(g => {
+      [...selected].forEach(sid => { if ((ITEMS[sid].groups||[]).includes(g)) { selected.delete(sid); removed.push(ITEMS[sid].name); } });
+    });
+    selected.add(id);
+    if (removed.length) toast("Заменено: " + [...new Set(removed)].join(", "));
+  }
+  try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch(e){}
+  update();
+}
+
+/* Защита: добавление процедуры никогда не уменьшает итог.
+   Итог набора = max(итог со скидкой, итог любого набора на одну процедуру меньше). */
+function rawTotal(list){ const s=list.reduce((a,i)=>a+i.price*q(i),0); return s - Math.round(s*discountFor(positions(list))/100); }
+function guarded(list, memo={}){
+  const key = list.map(i=>i.id).sort().join(",");
+  if (key in memo) return memo[key];
+  let best = rawTotal(list);
+  if (list.length > 1) list.forEach((_,k)=>{ best = Math.max(best, guarded(list.filter((_,j)=>j!==k), memo)); });
+  return memo[key] = best;
+}
+function calc(){
+  const all = [...selected].map(id => ITEMS[id]);
+  const list = all.filter(i=>!i.custom);
+  const custom = all.filter(i=>i.custom);
+  const sum = list.reduce((s,i)=>s+i.price*q(i),0);
+  const pct = discountFor(positions(list));
+  const disc = Math.round(sum*pct/100);
+  const after = guarded(list);
+  const cashDisc = payCash && list.length ? Math.round(after*CONFIG.cashPct/100) : 0;
+  return { list, custom, sum, pct, disc: sum-after, cashDisc, total: after-cashDisc };
+}
+
+function word(n){ const m10=n%10, m100=n%100;
+  if(m10===1&&m100!==11) return "позиция"; if(m10>=2&&m10<=4&&(m100<12||m100>14)) return "позиции"; return "позиций"; }
+
+function update(){
+  document.querySelectorAll(".item").forEach(el => {
+    const on = selected.has(el.dataset.id);
+    el.classList.toggle("sel", on); el.setAttribute("aria-checked", on);
+  });
+  const r = calc(), n = positions(r.list);
+  document.querySelectorAll(".tier").forEach(el => el.classList.toggle("on", discountFor(n) > 0 && +el.dataset.min === Math.max(...CONFIG.tiers.filter(t=>n>=t.min).map(t=>t.min))));
+  $("cnt").textContent = n ? `${n} ${word(n)}${r.disc?` · скидка ${r.disc===Math.round(r.sum*r.pct/100)?r.pct:Math.round(r.disc/r.sum*100)}%`:""}` : "Ничего не выбрано";
+  $("old").textContent = (r.pct||r.cashDisc) ? rub(r.sum) : "";
+  $("total").textContent = rub(r.total);
+  $("save").textContent = (r.disc+r.cashDisc) ? `Выгода ${rub(r.disc+r.cashDisc)}${r.cashDisc?" (вкл. наличные)":""}` : "";
+  const next = CONFIG.tiers.find(t => t.min > n);
+  $("hint").textContent = n >= CONFIG.maxItems ? `Выбрано максимум: ${CONFIG.maxItems} процедур` : next ? (n ? `Добавьте ещё ${next.min-n} — скидка ${next.pct}%` : `От ${CONFIG.tiers[0].min} позиций — скидка ${CONFIG.tiers[0].pct}%`) : "Максимальная скидка";
+  document.querySelectorAll("[data-q]").forEach(el => el.textContent = (qty[el.dataset.q]||1)+" мл");
+  $("order").disabled = !selected.size;
+}
+
+function orderText(){
+  const r = calc();
+  let t = "Здравствуйте! Хочу записаться на процедуры:\n\n";
+  r.list.forEach(i => { t += i.perMl ? `• ${i.section} — ${i.name}: ${q(i)} мл × ${rub(i.price)} = ${rub(i.price*q(i))}\n` : `• ${i.section} — ${i.name}${i.sub?" ("+i.sub+")":""}: ${i.from?"от ":""}${rub(i.price)}\n`; });
+  r.custom.forEach(i => { t += `• ${i.name}\n`; });
+  t += `\nПроцедур: ${positions(r.list)}\nСумма без скидки: ${rub(r.sum)}\n`;
+  if (r.disc) t += `Скидка${r.disc===Math.round(r.sum*r.pct/100)?" "+r.pct+"%":""}: −${rub(r.disc)}\n`;
+  if (r.cashDisc) t += `Оплата наличными −${CONFIG.cashPct}%: −${rub(r.cashDisc)}\n`;
+  if (r.list.length) t += `Итого: ${r.list.some(i=>i.from)?"от ":""}${rub(r.total)}`;
+  if (r.custom.length) t += (r.list.length?" + нити (индивидуально)":"Стоимость нитей — по консультации");
+  return t;
+}
+
+async function copy(text){
+  try { await navigator.clipboard.writeText(text); return true; } catch(e){}
+  try { const ta=$("orderText"); ta.removeAttribute("readonly"); ta.select(); const ok=document.execCommand("copy"); ta.setAttribute("readonly",""); return ok; } catch(e){ return false; }
+}
+
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2200); }
+
+$("catalog").addEventListener("click", e => {
+  const b = e.target.closest("[data-d]");
+  if (b) { const id=b.closest(".item").dataset.id; qty[id]=Math.min(10,Math.max(1,(qty[id]||1)+(+b.dataset.d))); update(); return; }
+  const el=e.target.closest(".item"); if(el) toggle(el.dataset.id); });
+$("catalog").addEventListener("keydown", e => { if((e.key===" "||e.key==="Enter")&&e.target.classList.contains("item")){ e.preventDefault(); toggle(e.target.dataset.id); }});
+$("order").onclick = () => {
+  $("orderText").value = orderText();
+  $("sheetHelp").textContent = CONFIG.telegram ? "Нажмите кнопку: текст скопируется и откроется чат. Вставьте его и отправьте — в ответ придёт подтверждение и ссылка на оплату." : "Скопируйте текст и отправьте его мастеру в личные сообщения.";
+  $("send").textContent = CONFIG.telegram ? "Скопировать и написать" : "Скопировать";
+  $("sheetBg").classList.add("open");
+};
+$("close").onclick = () => $("sheetBg").classList.remove("open");
+$("sheetBg").onclick = e => { if (e.target.id==="sheetBg") $("sheetBg").classList.remove("open"); };
+$("send").onclick = async () => {
+  const ok = await copy($("orderText").value);
+  toast(ok ? "Текст скопирован" : "Выделите текст и скопируйте вручную");
+  if (CONFIG.telegram) {
+    const url = "https://t.me/" + CONFIG.telegram.replace(/^@/,"");
+    setTimeout(() => { try { if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url,"_blank"); } catch(e){ window.open(url,"_blank"); } }, 600);
+  }
+};
+
+function vList(ids){ return ids.map(x=>{ const [id,n]=x.split(":"); return { it:ITEMS[id], n:+n||1 }; }); }
+function vLabel(it,n){ const s=it.section.split(":")[0].replace(" PDO «пружинка»",""); const nm = it.perMl ? `${it.name}, ${n} мл` : it.name;
+  return /^(Плазмолифтинг|Скинбустер)/.test(it.name)||s.startsWith("Плазмолифтинг") ? nm : `${s}: ${nm}`; }
+function vPrice(ids){
+  const saved={...qty}; const L=vList(ids); L.forEach(o=>{ if(o.it.perMl) qty[o.it.id]=o.n; });
+  const list=L.map(o=>o.it), sum=list.reduce((s,i)=>s+i.price*q(i),0), tot=guarded(list);
+  Object.keys(qty).forEach(k=>delete qty[k]); Object.assign(qty,saved); return {sum,tot};
+}
+function renderProblems(){
+  $("probs").innerHTML = PROBLEMS.map((pb,k) => `<div class="prob"><h4>${pb.title}</h4>${pb.variants.map((v,j)=>{
+    const {sum,tot}=vPrice(v.ids);
+    return `<div class="var">${v.label?`<div class="vl">${pb.variants.length>1?"Вариант "+(j+1)+": ":""}${v.label}</div>`:""}
+      <p class="pl">${vList(v.ids).map(o=>vLabel(o.it,o.n)).join("<br>")}</p>
+      <div class="pr"><div class="pp">${tot<sum?`<s>${rub(sum)}</s>`:""}${rub(tot)}</div><button data-p="${k}" data-v="${j}">Выбрать</button></div></div>`;
+  }).join("")}</div>`).join("");
+}
+$("probs").addEventListener("click", e => {
+  const b=e.target.closest("[data-p]"); if(!b) return;
+  selected.clear(); Object.keys(qty).forEach(k=>delete qty[k]);
+  vList(PROBLEMS[+b.dataset.p].variants[+b.dataset.v].ids).forEach(o=>{ selected.add(o.it.id); if(o.it.perMl) qty[o.it.id]=o.n; });
+  update(); toast("Набор выбран — можно добавить или убрать процедуры");
+});
+renderCatalog(); renderProblems(); update();
+</script>
+</body>
+</html>
