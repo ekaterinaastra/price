@@ -54,6 +54,10 @@ h2{font-family:"Cormorant Garamond",Georgia,serif;font-size:23px;font-weight:600
 .prob .pp{font-weight:600}
 .prob .pp s{color:var(--muted);font-weight:400;font-size:13px;margin-right:6px}
 .prob button{border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:11px;padding:8px 12px;font:600 13.5px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px;margin-bottom:4px}
+.desc{color:var(--text);font-size:13px;line-height:1.4;margin-top:6px;opacity:.85}
+.price s{display:block;color:var(--muted);font-weight:400;font-size:12.5px;text-align:right}
+.tiernote{color:var(--muted);font-size:12.5px;margin:0 0 4px}
 .subname{color:var(--muted);font-size:12.5px;margin-top:2px}
 .qty{display:flex;align-items:center;gap:10px;margin-top:8px}
 .item:not(.sel) .qty{display:none}
@@ -96,6 +100,8 @@ textarea{width:100%;height:200px;border:1px solid var(--line);border-radius:12px
   <h1>Конструктор процедур</h1>
   <p class="sub">Для постоянных клиентов. Отметь процедуры, и стоимость со скидкой посчитается сразу. За один приём — не более 6 процедур.</p>
   <div class="tiers" id="tiers"></div>
+  <p class="tiernote" id="tiernote"></p>
+  <div id="top"></div>
   <section>
     <h2>Подбор по проблеме</h2>
     <p class="note">Готовый набор можно выбрать и затем изменить</p>
@@ -144,18 +150,30 @@ const CONFIG = {
   // Скидка по количеству выбранных позиций:
   tiers: [
     { min: 2, pct: 15 },
-    { min: 3, pct: 20 },
-    { min: 4, pct: 25 },
-    { min: 5, pct: 32 },
-    { min: 6, pct: 40 },
+    { min: 3, pct: 30 },
+    { min: 4, pct: 35 },
+    { min: 5, pct: 42 },
+    { min: 6, pct: 50 },
   ],
   cashPct: 0,
+  stepMinPrice: 20000,         // ступень скидки дают процедуры от этой цены (и комплексы)
   maxItems: 6,                // максимум процедур за один приём (нити тоже считаются)
 };
 
 /* Каталог. group — позиции из одной зоны: выбирается только одна,
    при выборе другой первая снимается автоматически.            */
 const CATALOG = [
+  { title: "Популярные комплексы", top:true, note: "Фиксированная цена. Выбирается один комплекс; к нему можно добавить другие процедуры", items: [
+    { id:"x1", name:"Био лицо + ботокс верх", fixed:true, n:2, price:28000, was:40000, groups:["bTop","rFace"],
+      sub:"Биоревитализация лица с ГК (Novacutan, 2 мл) · ботокс: лоб, межбровье, глаза",
+      desc:"Мимические морщины лба, межбровья и вокруг глаз, сухая и тусклая кожа. Ботокс расслабляет мышцы, которые создают морщины, биоревитализация возвращает коже увлажнённость." },
+    { id:"x2", name:"Био лицо и шея + ботокс всё лицо", fixed:true, n:2, price:35000, was:50000, groups:["bTop","bBot","rFace","rNeck"],
+      sub:"Биоревитализация лица и шеи с ГК · ботокс всё лицо, 50 ед.",
+      desc:"Морщины и в верхней, и в нижней части лица, нечёткий овал, обезвоженная кожа лица и шеи. Для тех, кому нужна работа сразу со всем лицом." },
+    { id:"x3", name:"Био + ботокс верх + губы", fixed:true, n:3, price:45000, was:60000, groups:["bTop","rFace","lips"],
+      sub:"Биоревитализация лица с ГК · ботокс: лоб, межбровье, глаза · губы, филлер на основе ГК",
+      desc:"Всё, что даёт первый комплекс, плюс губы: сухость, мелкие морщинки, потеря объёма или чёткого контура." },
+  ]},
   { title: "Ботокс: лицо и шея", note: "«Всё лицо» заменяет «верх» и «низ»", items: [
     { id:"b1", name:"Верх (лоб, межбровье, глаза)", price:20000, groups:["bTop"] },
     { id:"b2", name:"Низ (подбородок, овал, шея)", sub:"50 ед.", price:25000, groups:["bBot"] },
@@ -187,7 +205,7 @@ const CATALOG = [
     { id:"c3", name:"Radiesse", sub:"3 мл", price:50000 },
   ]},
   { title: "Контурная пластика", items: [
-    { id:"k1", name:"Губы", price:20000 },
+    { id:"k1", name:"Губы", price:20000, groups:["lips"] },
     { id:"k2", name:"Подбородок", price:20000 },
     { id:"k3", name:"Скулы", price:30000 },
     { id:"k4", name:"Овал (углы нижней челюсти)", price:40000 },
@@ -241,12 +259,15 @@ let payCash = false;
 const q = i => i.perMl ? (qty[i.id]||1) : 1;
 function priceLabel(i){ if(i.custom) return "индивид."; return (i.from?"от ":"")+rub(i.price)+(i.perMl?" / мл":""); }
 // Позиции для скидки и лимита: несколько зон мезонитей = одна процедура
-function positions(list){ return new Set(list.map(i=>i.countAs||i.id)).size; }
+function positions(list){ const m=new Map(); list.forEach(i=>m.set(i.countAs||i.id, i.n||1)); let s=0; m.forEach(v=>s+=v); return s; }
+// Ступень скидки: комплекс = 1 ступень; отдельная процедура — только если стоит от stepMinPrice
+function steps(list){ return new Set(list.filter(i=>i.fixed || i.price*q(i)>=CONFIG.stepMinPrice).map(i=>i.countAs||i.id)).size; }
+const regular = i => i.fixed ? (i.was||i.price) : i.price*q(i);
 function discountFor(n){ let p=0; CONFIG.tiers.forEach(t=>{ if(n>=t.min) p=t.pct; }); return p; }
 
 function renderCatalog(){
   const check = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-  $("catalog").innerHTML = CATALOG.map(c => `
+  const sec = c => `
     <section>
       <h2>${c.title}</h2>
       ${c.note ? `<p class="note">${c.note}</p>` : '<p class="note"></p>'}
@@ -254,11 +275,14 @@ function renderCatalog(){
         ${c.items.map(i => `
           <div class="item" data-id="${i.id}" role="checkbox" aria-checked="false" tabindex="0">
             <div class="box">${check}</div>
-            <div class="name">${i.name}${i.sub?`<div class="subname">${i.sub}</div>`:""}${i.perMl?`<div class="qty"><button data-d="-1" aria-label="Меньше">−</button><span data-q="${i.id}">1 мл</span><button data-d="1" aria-label="Больше">+</button></div>`:""}</div>
-            <div class="price">${priceLabel(i)}</div>
+            <div class="name">${i.fixed?'<span class="badge">Популярное</span><br>':""}${i.name}${i.sub?`<div class="subname">${i.sub}</div>`:""}${i.perMl?`<div class="qty"><button data-d="-1" aria-label="Меньше">−</button><span data-q="${i.id}">1 мл</span><button data-d="1" aria-label="Больше">+</button></div>`:""}${i.desc?`<div class="desc">${i.desc}</div>`:""}</div>
+            <div class="price">${i.was?`<s>${rub(i.was)}</s>`:""}${priceLabel(i)}</div>
           </div>`).join("")}
       </div>
-    </section>`).join("");
+    </section>`;
+  $("top").innerHTML = CATALOG.filter(c=>c.top).map(sec).join("");
+  $("catalog").innerHTML = CATALOG.filter(c=>!c.top).map(sec).join("");
+  $("tiernote").textContent = `Ступень скидки дают процедуры от ${rub(CONFIG.stepMinPrice)} и комплексы. Процедуры дешевле тоже идут со скидкой, но ступень не повышают.`;
   $("tiers").innerHTML = CONFIG.tiers.map(t => `<div class="tier" data-min="${t.min}">${t.min} поз. <b>−${t.pct}%</b></div>`).join("");
 }
 
@@ -282,7 +306,8 @@ function toggle(id){
 
 /* Защита: добавление процедуры никогда не уменьшает итог.
    Итог набора = max(итог со скидкой, итог любого набора на одну процедуру меньше). */
-function rawTotal(list){ const s=list.reduce((a,i)=>a+i.price*q(i),0); return s - Math.round(s*discountFor(positions(list))/100); }
+function rawTotal(list){ const fx=list.filter(i=>i.fixed).reduce((a,i)=>a+i.price,0);
+  const s=list.filter(i=>!i.fixed).reduce((a,i)=>a+i.price*q(i),0); return fx + s - Math.round(s*discountFor(steps(list))/100); }
 function guarded(list, memo={}){
   const key = list.map(i=>i.id).sort().join(",");
   if (key in memo) return memo[key];
@@ -294,9 +319,8 @@ function calc(){
   const all = [...selected].map(id => ITEMS[id]);
   const list = all.filter(i=>!i.custom);
   const custom = all.filter(i=>i.custom);
-  const sum = list.reduce((s,i)=>s+i.price*q(i),0);
-  const pct = discountFor(positions(list));
-  const disc = Math.round(sum*pct/100);
+  const sum = list.reduce((s,i)=>s+regular(i),0);
+  const pct = discountFor(steps(list));
   const after = guarded(list);
   const cashDisc = payCash && list.length ? Math.round(after*CONFIG.cashPct/100) : 0;
   return { list, custom, sum, pct, disc: sum-after, cashDisc, total: after-cashDisc };
@@ -310,14 +334,14 @@ function update(){
     const on = selected.has(el.dataset.id);
     el.classList.toggle("sel", on); el.setAttribute("aria-checked", on);
   });
-  const r = calc(), n = positions(r.list);
-  document.querySelectorAll(".tier").forEach(el => el.classList.toggle("on", discountFor(n) > 0 && +el.dataset.min === Math.max(...CONFIG.tiers.filter(t=>n>=t.min).map(t=>t.min))));
-  $("cnt").textContent = n ? `${n} ${word(n)}${r.disc?` · скидка ${r.disc===Math.round(r.sum*r.pct/100)?r.pct:Math.round(r.disc/r.sum*100)}%`:""}` : "Ничего не выбрано";
-  $("old").textContent = (r.pct||r.cashDisc) ? rub(r.sum) : "";
+  const r = calc(), n = positions(r.list), k = steps(r.list);
+  document.querySelectorAll(".tier").forEach(el => el.classList.toggle("on", discountFor(k) > 0 && +el.dataset.min === Math.max(...CONFIG.tiers.filter(t=>k>=t.min).map(t=>t.min))));
+  $("cnt").textContent = n ? `${n} ${word(n)}${r.disc?` · выгода ${Math.round(r.disc/r.sum*100)}%`:""}` : "Ничего не выбрано";
+  $("old").textContent = (r.disc||r.cashDisc) ? rub(r.sum) : "";
   $("total").textContent = rub(r.total);
   $("save").textContent = (r.disc+r.cashDisc) ? `Выгода ${rub(r.disc+r.cashDisc)}${r.cashDisc?" (вкл. наличные)":""}` : "";
-  const next = CONFIG.tiers.find(t => t.min > n);
-  $("hint").textContent = n >= CONFIG.maxItems ? `Выбрано максимум: ${CONFIG.maxItems} процедур` : next ? (n ? `Добавьте ещё ${next.min-n} — скидка ${next.pct}%` : `От ${CONFIG.tiers[0].min} позиций — скидка ${CONFIG.tiers[0].pct}%`) : "Максимальная скидка";
+  const next = CONFIG.tiers.find(t => t.min > k), m = next ? next.min-k : 0;
+  $("hint").textContent = n >= CONFIG.maxItems ? `Выбрано максимум: ${CONFIG.maxItems} процедур` : next ? (k ? `Ещё ${m} ${m===1?"процедура":"процедуры"} от ${rub(CONFIG.stepMinPrice)} — скидка ${next.pct}%` : `От ${CONFIG.tiers[0].min} процедур — скидка ${CONFIG.tiers[0].pct}%`) : "Максимальная скидка";
   document.querySelectorAll("[data-q]").forEach(el => el.textContent = (qty[el.dataset.q]||1)+" мл");
   $("order").disabled = !selected.size;
 }
@@ -325,10 +349,10 @@ function update(){
 function orderText(){
   const r = calc();
   let t = "Здравствуйте! Хочу записаться на процедуры:\n\n";
-  r.list.forEach(i => { t += i.perMl ? `• ${i.section} — ${i.name}: ${q(i)} мл × ${rub(i.price)} = ${rub(i.price*q(i))}\n` : `• ${i.section} — ${i.name}${i.sub?" ("+i.sub+")":""}: ${i.from?"от ":""}${rub(i.price)}\n`; });
+  r.list.forEach(i => { t += i.fixed ? `• Комплекс «${i.name}»: ${rub(i.price)} (фиксированная цена)\n` : i.perMl ? `• ${i.section} — ${i.name}: ${q(i)} мл × ${rub(i.price)} = ${rub(i.price*q(i))}\n` : `• ${i.section} — ${i.name}${i.sub?" ("+i.sub+")":""}: ${i.from?"от ":""}${rub(i.price)}\n`; });
   r.custom.forEach(i => { t += `• ${i.name}\n`; });
   t += `\nПроцедур: ${positions(r.list)}\nСумма без скидки: ${rub(r.sum)}\n`;
-  if (r.disc) t += `Скидка${r.disc===Math.round(r.sum*r.pct/100)?" "+r.pct+"%":""}: −${rub(r.disc)}\n`;
+  if (r.disc) t += `Выгода: −${rub(r.disc)}\n`;
   if (r.cashDisc) t += `Оплата наличными −${CONFIG.cashPct}%: −${rub(r.cashDisc)}\n`;
   if (r.list.length) t += `Итого: ${r.list.some(i=>i.from)?"от ":""}${rub(r.total)}`;
   if (r.custom.length) t += (r.list.length?" + нити (индивидуально)":"Стоимость нитей — по консультации");
@@ -342,11 +366,13 @@ async function copy(text){
 
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2200); }
 
-$("catalog").addEventListener("click", e => {
+["top","catalog"].forEach(cid => {
+$(cid).addEventListener("click", e => {
   const b = e.target.closest("[data-d]");
   if (b) { const id=b.closest(".item").dataset.id; qty[id]=Math.min(10,Math.max(1,(qty[id]||1)+(+b.dataset.d))); update(); return; }
   const el=e.target.closest(".item"); if(el) toggle(el.dataset.id); });
-$("catalog").addEventListener("keydown", e => { if((e.key===" "||e.key==="Enter")&&e.target.classList.contains("item")){ e.preventDefault(); toggle(e.target.dataset.id); }});
+$(cid).addEventListener("keydown", e => { if((e.key===" "||e.key==="Enter")&&e.target.classList.contains("item")){ e.preventDefault(); toggle(e.target.dataset.id); }});
+});
 $("order").onclick = () => {
   $("orderText").value = orderText();
   $("sheetHelp").textContent = CONFIG.telegram ? "Нажмите кнопку: текст скопируется и откроется чат. Вставьте его и отправьте — в ответ придёт подтверждение и ссылка на оплату." : "Скопируйте текст и отправьте его мастеру в личные сообщения.";
