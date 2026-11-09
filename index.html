@@ -99,6 +99,7 @@ textarea{width:100%;height:200px;border:1px solid var(--line);border-radius:12px
 <div class="wrap">
   <h1>Конструктор процедур</h1>
   <p class="sub">Для постоянных клиентов. Отметь процедуры, и стоимость со скидкой посчитается сразу. За один приём — не более 6 процедур.</p>
+  <p class="sub" id="bookTop" style="display:none;margin-top:-8px">Уже знаете, что нужно? <a href="#" id="bookLink" style="color:var(--accent);font-weight:600">Записаться онлайн →</a></p>
   <div class="tiers" id="tiers"></div>
   <p class="tiernote" id="tiernote"></p>
   <div id="top"></div>
@@ -135,7 +136,8 @@ textarea{width:100%;height:200px;border:1px solid var(--line);border-radius:12px
     <p id="sheetHelp"></p>
     <textarea id="orderText" readonly></textarea>
     <div class="actions">
-      <button class="btn" id="send">Скопировать и написать</button>
+      <button class="btn" id="book">Скопировать и выбрать время</button>
+      <button class="btn ghost" id="send">Скопировать и написать в Telegram</button>
       <button class="btn ghost" id="close">Вернуться к выбору</button>
     </div>
   </div>
@@ -147,6 +149,7 @@ textarea{width:100%;height:200px;border:1px solid var(--line);border-radius:12px
    Всё, что может понадобиться менять, — здесь.            */
 const CONFIG = {
   telegram: "Ekaterinaastra_vrach",  // ник БЕЗ @
+  booking: "https://dikidi.ru/179463", // онлайн-запись (DIKIDI); пусто "" — кнопка скроется
   // Скидка по количеству выбранных позиций:
   tiers: [
     { min: 2, pct: 15 },
@@ -375,8 +378,12 @@ $(cid).addEventListener("keydown", e => { if((e.key===" "||e.key==="Enter")&&e.t
 });
 $("order").onclick = () => {
   $("orderText").value = orderText();
-  $("sheetHelp").textContent = CONFIG.telegram ? "Нажмите кнопку: текст скопируется и откроется чат. Вставьте его и отправьте — в ответ придёт подтверждение и ссылка на оплату." : "Скопируйте текст и отправьте его мастеру в личные сообщения.";
-  $("send").textContent = CONFIG.telegram ? "Скопировать и написать" : "Скопировать";
+  $("sheetHelp").textContent = CONFIG.booking
+    ? "Текст набора скопируется. Выберите удобное время онлайн и вставьте текст в комментарий к записи — так сохранится цена со скидкой. Или отправьте его в Telegram."
+    : CONFIG.telegram ? "Нажмите кнопку: текст скопируется и откроется чат. Вставьте его и отправьте — в ответ придёт подтверждение и ссылка на оплату." : "Скопируйте текст и отправьте его мастеру в личные сообщения.";
+  $("book").style.display = CONFIG.booking ? "" : "none";
+  $("send").className = CONFIG.booking ? "btn ghost" : "btn";
+  $("send").textContent = CONFIG.telegram ? (CONFIG.booking ? "Скопировать и написать в Telegram" : "Скопировать и написать") : "Скопировать";
   $("sheetBg").classList.add("open");
 };
 $("close").onclick = () => $("sheetBg").classList.remove("open");
@@ -389,6 +396,19 @@ $("send").onclick = async () => {
     setTimeout(() => { try { if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url,"_blank"); } catch(e){ window.open(url,"_blank"); } }, 600);
   }
 };
+
+function openBooking(){
+  try { if (tg && tg.openLink) tg.openLink(CONFIG.booking); else window.open(CONFIG.booking,"_blank"); } catch(e){ window.open(CONFIG.booking,"_blank"); }
+}
+$("book").onclick = async () => {
+  const ok = await copy($("orderText").value);
+  toast(ok ? "Текст скопирован — вставьте его в комментарий к записи" : "Выделите текст и скопируйте вручную");
+  setTimeout(openBooking, 900);
+};
+if (CONFIG.booking) {
+  $("bookTop").style.display = "";
+  $("bookLink").onclick = e => { e.preventDefault(); openBooking(); };
+}
 
 function vList(ids){ return ids.map(x=>{ const [id,n]=x.split(":"); return { it:ITEMS[id], n:+n||1 }; }); }
 function vLabel(it,n){ const s=it.section.split(":")[0].replace(" PDO «пружинка»",""); const nm = it.perMl ? `${it.name}, ${n} мл` : it.name;
