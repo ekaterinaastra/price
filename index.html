@@ -6,17 +6,17 @@
 <title>Конструктор процедур</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Pinyon+Script&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ====== ЦВЕТА (можно поменять под бренд) ====== */
 :root{
-  --bg:#f7f3ef; --card:#ffffff; --text:#2b2422; --muted:#8a7e78;
-  --line:#ebe3dc; --accent:#8c5a4f; --accent-soft:#f2e6e1; --accent-text:#ffffff;
+  --bg:#f6f0e7; --card:#fffdf9; --text:#1f1b17; --muted:#6b5e52;
+  --line:#e3d9cc; --accent:#1f1b17; --accent-soft:#ede3d6; --accent-text:#f6f0e7; --star:#8a5f38;
   --ok:#5b8a6b;
 }
 :root[data-theme="dark"]{
-  --bg:#1b1716; --card:#262120; --text:#f3ece7; --muted:#a3958e;
-  --line:#3a3230; --accent:#c48b7c; --accent-soft:#3a2c28; --accent-text:#1b1716;
+  --bg:#1f1b17; --card:#29241f; --text:#f6f0e7; --muted:#bfb2a3;
+  --line:#3a332c; --accent:#d4ae84; --accent-soft:#332b23; --accent-text:#1f1b17; --star:#d4ae84;
   --ok:#86b896;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -93,10 +93,13 @@ textarea{width:100%;height:200px;border:1px solid var(--line);border-radius:12px
 .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-80px);background:var(--text);color:var(--bg);
   padding:10px 14px;border-radius:12px;font-size:13px;transition:.25s;z-index:20;max-width:90%;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
+.mono{width:40px;height:33px;overflow:visible;flex:0 0 auto}.mono-star{fill:var(--star)}
+.brand{display:flex;align-items:center;gap:10px;margin:4px 0 14px;color:var(--text);font:500 15px/1 "Cormorant Garamond",Georgia,serif;letter-spacing:.26em}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="brand"><svg class="mono" viewBox="-70 0 350 290" aria-hidden="true"><g fill="currentColor"><polygon points="144,18 157,18 246,272 216,272"/><polygon points="144,18 152,18 77,272 69,272"/><rect x="48" y="268" width="48" height="6"/><rect x="198" y="268" width="68" height="6"/><rect x="97" y="187" width="102" height="5"/></g><path class="mono-star" d="M147 160 Q151 186 177 190 Q151 194 147 220 Q143 194 117 190 Q143 186 147 160 Z"/><text x="150" y="262" text-anchor="end" font-family="Pinyon Script, cursive" font-size="250" fill="currentColor">E</text></svg><span>EKATERINA ASTRA</span></div>
   <h1>Конструктор процедур</h1>
   <p class="sub">Для постоянных клиентов. Отметь процедуры, и стоимость со скидкой посчитается сразу. За один приём — не более 6 процедур.</p>
   <p class="sub" id="bookTop" style="display:none;margin-top:-8px">Уже знаете, что нужно? <a href="#" id="bookLink" style="color:var(--accent);font-weight:600">Записаться онлайн →</a></p>
